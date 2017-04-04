@@ -20,7 +20,7 @@ class CouponGenerationForm(forms.Form):
 
 
 class CouponForm(forms.Form):
-    code = forms.CharField(label=_("Coupon code"))
+    code = forms.CharField(label=_("Coupon code"), required=False)
 
     def __init__(self, *args, **kwargs):
         self.user = None
@@ -35,6 +35,8 @@ class CouponForm(forms.Form):
 
     def clean_code(self):
         code = self.cleaned_data['code']
+        if not code:
+            return code
         try:
             coupon = Coupon.objects.get(code=code)
         except Coupon.DoesNotExist:
