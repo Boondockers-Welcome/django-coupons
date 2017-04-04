@@ -4,7 +4,7 @@ from . import models
 
 
 def get_coupon_details(request):
-    code = request.GET.get('coupon_code', None)
+    code = request.GET.get('code', None)
     types = request.GET.get('types', None)
     if code is None:
         data = {'err': _("Please provide a coupon code.")}
