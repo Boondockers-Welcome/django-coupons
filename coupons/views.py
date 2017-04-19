@@ -15,7 +15,7 @@ def get_coupon_details(request):
         data = {'err': _("This code is not valid.")}
         return JsonResponse(data)
 
-    if request.user.id == 0 and coupon.user_limit is not 1:
+    if request.user.is_anonymous() == 0 and coupon.user_limit is not 1:
         data = {'err': _("You must be logged in to use this coupon")}
         return JsonResponse(data)
 
@@ -23,8 +23,12 @@ def get_coupon_details(request):
         data = {'err': _("This coupon has already been redeemed")}
         return JsonResponse(data)
 
+    if request.user.is_anonymous():
+        user = None
+    else:
+        user = request.user
     try:  # check if there is a user bound coupon existing
-        user_coupon = coupon.users.get(user=request.user)
+        user_coupon = coupon.users.get(user=user)
         if user_coupon.redeemed_at is not None:
             data = {'err': _("You have already redeemed this coupon once.")}
             return JsonResponse(data)
