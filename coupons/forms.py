@@ -2,7 +2,7 @@ from django import forms
 from django.utils.translation import ugettext_lazy as _
 
 from .models import Coupon, CouponUser, Campaign
-from .settings import COUPON_TYPES
+from .settings import COUPON_TYPES, PRODUCT_MODEL, PRODUCT_NAME_FIELD
 
 
 class CouponGenerationForm(forms.Form):
@@ -25,12 +25,16 @@ class CouponForm(forms.Form):
     def __init__(self, *args, **kwargs):
         self.user = None
         self.types = None
+        self.products = None
         if 'user' in kwargs:
             self.user = kwargs['user']
             del kwargs['user']
         if 'types' in kwargs:
             self.types = kwargs['types']
             del kwargs['types']
+        if 'products' in kwargs:
+            self.products = kwargs['products']
+            del kwargs['products']
         super(CouponForm, self).__init__(*args, **kwargs)
 
     def clean_code(self):
@@ -68,4 +72,14 @@ class CouponForm(forms.Form):
             raise forms.ValidationError(_("This code is not meant to be used here."))
         if coupon.expired():
             raise forms.ValidationError(_("This code is expired."))
+        if PRODUCT_MODEL is not None and self.products is not None:
+            applicable_products = []
+            print(coupon.valid_products.all())
+            print(self.products)
+            for valid_product in coupon.valid_products.all():
+                product_name = getattr(valid_product, PRODUCT_NAME_FIELD)
+                if product_name in self.products:
+                    applicable_products.append(product_name)
+            if len(applicable_products) == 0:
+                raise forms.ValidationError(_("This code is not valid for the product selected."))
         return code

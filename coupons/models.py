@@ -15,6 +15,7 @@ from .settings import (
     SEGMENTED_CODES,
     SEGMENT_LENGTH,
     SEGMENT_SEPARATOR,
+    PRODUCT_MODEL,
 )
 
 
@@ -77,6 +78,9 @@ class Coupon(models.Model):
         _("Valid until"), blank=True, null=True,
         help_text=_("Leave empty for coupons that never expire"))
     campaign = models.ForeignKey('Campaign', verbose_name=_("Campaign"), blank=True, null=True, related_name='coupons')
+
+    if PRODUCT_MODEL:
+        valid_products = models.ManyToManyField(PRODUCT_MODEL, blank=True)
 
     objects = CouponManager()
 
