@@ -108,13 +108,9 @@ class UnlimitedCouponTestCase(TestCase):
             self.assertTrue(form.is_valid())
 
     def test_form_without_user(self):
-        """ This should fail since we cannot track single use of a coupon without an user. """
+        """ This should pass, anonymous users can use coupon too if it has no limit """
         form = CouponForm(data={'code': self.coupon.code})
-        self.assertFalse(form.is_valid())
-        self.assertEquals(
-            form.errors,
-            {'code': ['The server must provide an user to this form to allow you to use this code. Maybe you need to sign in?']}
-        )
+        self.assertTrue(form.is_valid())
 
     def test_redeem_with_user_twice(self):
         self.test_redeem_with_user()

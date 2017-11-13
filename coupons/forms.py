@@ -47,7 +47,7 @@ class CouponForm(forms.Form):
             raise forms.ValidationError(_("This code is not valid."))
         self.coupon = coupon
 
-        if self.user is None and coupon.user_limit is not 1:
+        if self.user is None and coupon.user_limit > 1:
             # coupons with can be used only once can be used without tracking the user, otherwise there is no chance
             # of excluding an unknown user from multiple usages.
             raise forms.ValidationError(_(
@@ -72,10 +72,8 @@ class CouponForm(forms.Form):
             raise forms.ValidationError(_("This code is not meant to be used here."))
         if coupon.expired():
             raise forms.ValidationError(_("This code is expired."))
-        if PRODUCT_MODEL is not None and self.products is not None:
+        if PRODUCT_MODEL is not None and coupon.valid_products.count() > 0:
             applicable_products = []
-            print(coupon.valid_products.all())
-            print(self.products)
             for valid_product in coupon.valid_products.all():
                 product_name = getattr(valid_product, PRODUCT_NAME_FIELD)
                 if product_name in self.products:

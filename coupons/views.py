@@ -17,7 +17,7 @@ def get_coupon_details(request):
         data = {'err': _("This code is not valid.")}
         return JsonResponse(data)
 
-    if request.user.is_anonymous() == 0 and coupon.user_limit is not 0:
+    if request.user.is_anonymous() and coupon.user_limit > 1:
         data = {'err': _("You must be logged in to use this coupon")}
         return JsonResponse(data)
 
@@ -51,7 +51,7 @@ def get_coupon_details(request):
         return JsonResponse(data)
     applicable_products = []
     if coupon_settings.PRODUCT_MODEL is not None:
-        if len(products) != 0 and coupon.valid_products is not None:
+        if len(products) != 0 and coupon.valid_products.count() > 0:
             for valid_product in coupon.valid_products.all():
                 product_name = getattr(valid_product, coupon_settings.PRODUCT_NAME_FIELD)
                 if product_name in products:
