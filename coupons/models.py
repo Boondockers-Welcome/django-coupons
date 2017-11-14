@@ -1,5 +1,6 @@
 import random
-
+from time import time
+from hashlib import md5
 from django.conf import settings
 from django.db import IntegrityError
 from django.db import models
@@ -27,13 +28,22 @@ redeem_done = Signal(providing_args=["coupon"])
 
 
 class CouponManager(models.Manager):
-    def create_coupon(self, type, value, users=[], valid_until=None, prefix="", campaign=None, user_limit=None):
+    def create_coupon(
+        self, type, value, users=[], valid_until=None, prefix="",
+        campaign=None, user_limit=None, bulk=False, bulk_number=0, bulk_seed=''
+    ):
+        if bulk and bulk_seed == '':
+            bulk_seed = md5(hex(int(time() * 10000000))[2:].encode()).hexdigest()
+
         coupon = self.create(
             value=value,
             code=Coupon.generate_code(prefix),
             type=type,
             valid_until=valid_until,
             campaign=campaign,
+            bulk=bulk,
+            bulk_number=bulk_number,
+            bulk_seed=bulk_seed,
         )
         if user_limit is not None:  # otherwise use default value of model
             coupon.user_limit = user_limit
@@ -54,6 +64,32 @@ class CouponManager(models.Manager):
         for i in range(quantity):
             coupons.append(self.create_coupon(type, value, None, valid_until, prefix, campaign))
         return coupons
+
+    def get_coupon(self, code):
+        try:
+            return self.get(code__iexact=code)
+        except Coupon.DoesNotExist:
+            pass
+        # Check to see if there's a bulk code with
+        bulk_coupons = self.filter(bulk=True)
+        for bulk_coupon in bulk_coupons:
+            if code.upper().find(bulk_coupon.code.upper()) != 0:
+                continue
+            # Check coupon sequence ID
+            start = len(bulk_coupon.code)
+            stop = start + len(hex(bulk_coupon.bulk_number)[2:])
+            try:
+                index = int(code[start:stop], base=16)
+            except ValueError:
+                continue
+            if index < 0 or index >= bulk_coupon.bulk_number:
+                continue
+
+            # Check complete code with seed
+            if code.upper() == bulk_coupon.get_bulk_code(index).upper():
+                return bulk_coupon
+
+        raise Coupon.DoesNotExist
 
     def used(self):
         return self.exclude(users__redeemed_at__isnull=True)
@@ -79,6 +115,11 @@ class Coupon(models.Model):
         help_text=_("Leave empty for coupons that never expire"))
     campaign = models.ForeignKey('Campaign', verbose_name=_("Campaign"), blank=True, null=True, related_name='coupons')
 
+    bulk = models.BooleanField(default=False)
+    bulk_number = models.PositiveIntegerField(default=0)
+    bulk_seed = models.CharField(max_length=32, blank=True)
+    bulk_length = models.PositiveIntegerField(default=8)
+
     if PRODUCT_MODEL:
         valid_products = models.ManyToManyField(PRODUCT_MODEL, blank=True)
 
@@ -103,9 +144,14 @@ class Coupon(models.Model):
     @property
     def is_redeemed(self):
         """ Returns true is a coupon is redeemed (completely for all users) otherwise returns false. """
-        return self.users.filter(
-            redeemed_at__isnull=False
-        ).count() >= self.user_limit and self.user_limit is not 0
+        if not self.bulk:
+            return self.users.filter(
+                redeemed_at__isnull=False
+            ).count() >= self.user_limit and self.user_limit is not 0
+        else:
+            return self.users.filter(
+                redeemed_at__isnull=False
+            ).count() >= self.bulk_number
 
     @property
     def redeemed_at(self):
@@ -123,7 +169,7 @@ class Coupon(models.Model):
         else:
             return prefix + code
 
-    def redeem(self, user=None):
+    def redeem(self, user=None, bulk_code=None):
         try:
             coupon_user = self.users.get(user=user)
         except CouponUser.DoesNotExist:
@@ -133,8 +179,14 @@ class Coupon(models.Model):
             except CouponUser.DoesNotExist:
                 coupon_user = CouponUser(coupon=self, user=user)
         coupon_user.redeemed_at = timezone.now()
+        coupon_user.code = bulk_code
         coupon_user.save()
         redeem_done.send(sender=self.__class__, coupon=self)
+
+    def get_bulk_code(self, index):
+        hex_id = hex(index)[2:].rjust(len(hex(self.bulk_number)[2:]), '0')
+        length = len(self.code) + self.bulk_length
+        return str(self.code + hex_id + md5(str(self.bulk_seed + hex_id).encode()).hexdigest()).upper()[0:length]
 
 
 @python_2_unicode_compatible
@@ -156,6 +208,7 @@ class CouponUser(models.Model):
     coupon = models.ForeignKey(Coupon, related_name='users')
     user = models.ForeignKey(user_model, verbose_name=_("User"), null=True, blank=True)
     redeemed_at = models.DateTimeField(_("Redeemed at"), blank=True, null=True)
+    code = models.CharField(_("Bulk Code"), max_length=64, blank=True, null=True)
 
     class Meta:
         unique_together = (('coupon', 'user'),)

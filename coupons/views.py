@@ -12,7 +12,7 @@ def get_coupon_details(request):
         data = {'err': _("Please provide a coupon code.")}
         return JsonResponse(data)
     try:
-        coupon = models.Coupon.objects.get(code=code)
+        coupon = models.Coupon.objects.get_coupon(code)
     except models.Coupon.DoesNotExist:
         data = {'err': _("This code is not valid.")}
         return JsonResponse(data)
@@ -36,13 +36,21 @@ def get_coupon_details(request):
             return JsonResponse(data)
     except models.CouponUser.DoesNotExist:
         if coupon.user_limit is not 0:  # zero means no limit of user count
-            # only user bound coupons left and you don't have one
-            if coupon.user_limit is coupon.users.filter(user__isnull=False).count():
-                data = {'err': _("This code is not valid for your account.")}
-                return JsonResponse(data)
-            if coupon.user_limit is coupon.users.filter(redeemed_at__isnull=False).count():  # all coupons redeemed
-                data = {'err': _("This code has already been used.")}
-                return JsonResponse(data)
+            if not coupon.bulk:
+                # only user bound coupons left and you don't have one
+                if coupon.user_limit is coupon.users.filter(user__isnull=False).count():
+                    data = {'err': _("This code is not valid for your account.")}
+                    return JsonResponse(data)
+                if coupon.user_limit is coupon.users.filter(redeemed_at__isnull=False).count():  # all coupons redeemed
+                    data = {'err': _("This code has already been used.")}
+                    return JsonResponse(data)
+            else:
+                if coupon.users.filter(code=code).exists():
+                    data = {'err': _("This code has already been used")}
+                    return JsonResponse(data)
+                if coupon.bulk_number is coupon.users.filter(user__isnull=False).count():
+                    data = {'err': _("This code is not valid for your account.")}
+                    return JsonResponse(data)
     if types is not None and coupon.type not in types:
         data = {'err': _("This code is not meant to be used here.")}
         return JsonResponse(data)

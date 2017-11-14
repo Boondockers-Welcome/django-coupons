@@ -121,3 +121,40 @@ class UnlimitedCouponTestCase(TestCase):
             form.errors,
             {'code': ['This code has already been used by your account.']}
         )
+
+
+class BulkCouponTestCase(TestCase):
+    def setUp(self):
+        self.user = User.objects.create(username="user1")
+        self.coupon = Coupon.objects.create_coupon('monetary', 100, bulk=True, bulk_number=10)
+        self.bulk_code = self.coupon.get_bulk_code(5)
+
+    def test_redeem_with_user(self):
+        self.coupon.redeem(self.user, self.bulk_code)
+        # coupon not marked as redeemed as other bulk codes unused
+        self.assertFalse(self.coupon.is_redeemed)
+        self.assertEquals(self.coupon.users.count(), 1)
+        self.assertIsInstance(self.coupon.users.first().redeemed_at, datetime)
+        self.assertEquals(self.coupon.users.first().user, self.user)
+        self.assertEquals(self.coupon.users.first().code, self.bulk_code)
+
+    def test_redeem_with_user_twice(self):
+        self.test_redeem_with_user()
+        # try to redeem again with form
+        form = CouponForm(data={'code': self.bulk_code}, user=self.user)
+        self.assertFalse(form.is_valid())
+        self.assertEquals(
+            form.errors,
+            {'code': ['This code has already been used by your account.']}
+        )
+
+    def test_redeem_same_code_twice(self):
+        self.test_redeem_with_user()
+        # try to redeem again with form
+        user = User.objects.create(username="user2")
+        form = CouponForm(data={'code': self.bulk_code}, user=user)
+        self.assertFalse(form.is_valid())
+        self.assertEquals(
+            form.errors,
+            {'code': ['This code has already been used.']}
+        )

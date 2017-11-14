@@ -7,6 +7,7 @@ from django.contrib.admin.sites import AdminSite
 
 from coupons.admin import CouponAdmin
 from coupons.models import Coupon
+from coupons import settings
 
 
 class MockRequest(object):
@@ -24,7 +25,12 @@ class CouponAdminTestCase(TestCase):
     def test_list_display(self):
         admin = CouponAdmin(Coupon, self.site)
 
-        self.assertEquals(
-            list(admin.get_fields(request)),
-            ['value', 'code', 'type', 'user_limit', 'valid_until', 'campaign', 'valid_products']
-        )
+        fields = [
+            'value', 'code', 'type', 'user_limit', 'valid_until', 'campaign', 'bulk',
+            'bulk_number', 'bulk_seed', 'bulk_length'
+        ]
+
+        if settings.PRODUCT_MODEL:
+            fields.push('valid_products')
+
+        self.assertEquals(list(admin.get_fields(request)), fields)

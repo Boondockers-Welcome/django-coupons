@@ -75,3 +75,29 @@ class UnboundCouponFormTestCase(TestCase):
         form = CouponForm(data=form_data, user=self.user)
 
         self.assertTrue(form.is_valid())
+
+
+class BulkCouponFormTestCase(TestCase):
+    def setUp(self):
+        self.coupon = Coupon.objects.create_coupon('monetary', 100, bulk=True, bulk_number=10)
+
+    def test_one_usage_okay(self):
+        form_data = {'code': self.coupon.get_bulk_code(5)}
+        form = CouponForm(data=form_data)
+        self.assertTrue(form.is_valid())
+
+    def test_already_used_fails(self):
+        code = self.coupon.get_bulk_code(1)
+        CouponUser.objects.create(coupon=self.coupon, code=code, redeemed_at=timezone.now())
+        form_data = {'code': code}
+        form = CouponForm(data=form_data)
+        self.assertFalse(form.is_valid())
+
+    def test_user_bound(self):
+        self.user = User(username="user1")
+        self.user.save()
+        CouponUser.objects.create(coupon=self.coupon, user=self.user)
+
+        form_data = {'code': self.coupon.get_bulk_code(5)}
+        form = CouponForm(data=form_data, user=self.user)
+        self.assertTrue(form.is_valid())
