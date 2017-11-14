@@ -107,7 +107,9 @@ class Coupon(models.Model):
         _("Code"), max_length=30, unique=True, blank=True,
         help_text=_("Leaving this field empty will generate a random code."))
     description = models.CharField(max_length=256, blank=True, null=True)
-    value = models.IntegerField(_("Value"), help_text=_("Arbitrary coupon value"))
+    value = models.DecimalField(
+        _("Value"), help_text=_("Arbitrary coupon value"), max_digits=6, decimal_places=2
+    )
     type = models.CharField(_("Type"), max_length=20, choices=COUPON_TYPES)
     user_limit = models.PositiveIntegerField(_("User limit"), default=1)
     created_at = models.DateTimeField(_("Created at"), default=timezone.now)
