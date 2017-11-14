@@ -116,6 +116,7 @@ class Coupon(models.Model):
     valid_until = models.DateTimeField(
         _("Valid until"), blank=True, null=True,
         help_text=_("Leave empty for coupons that never expire"))
+    active = models.BooleanField(default=True)
     campaign = models.ForeignKey('Campaign', verbose_name=_("Campaign"), blank=True, null=True, related_name='coupons')
 
     bulk = models.BooleanField(default=False)

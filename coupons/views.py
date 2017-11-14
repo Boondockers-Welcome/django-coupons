@@ -17,6 +17,10 @@ def get_coupon_details(request):
         data = {'err': _("This code is not valid.")}
         return JsonResponse(data)
 
+    if not coupon.active:
+        data = {'err': _("This coupon is not active")}
+        return JsonResponse(data)
+
     if request.user.is_anonymous() and coupon.user_limit > 1:
         data = {'err': _("You must be logged in to use this coupon")}
         return JsonResponse(data)

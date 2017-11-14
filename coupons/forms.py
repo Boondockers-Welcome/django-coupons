@@ -54,6 +54,9 @@ class CouponForm(forms.Form):
                 "The server must provide an user to this form to allow you to use this code. Maybe you need to sign in?"
             ))
 
+        if not coupon.active:
+            raise forms.ValidationError(_("This code is not active."))
+
         if coupon.is_redeemed:
             raise forms.ValidationError(_("This code has already been used."))
 

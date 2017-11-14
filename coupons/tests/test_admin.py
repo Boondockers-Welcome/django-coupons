@@ -26,8 +26,8 @@ class CouponAdminTestCase(TestCase):
         admin = CouponAdmin(Coupon, self.site)
 
         fields = [
-            'code', 'description', 'value', 'type', 'user_limit', 'created_at', 'valid_until', 'campaign', 'bulk',
-            'bulk_number', 'bulk_seed', 'bulk_length'
+            'code', 'description', 'value', 'type', 'user_limit', 'created_at', 'valid_until', 'active',
+            'campaign', 'bulk', 'bulk_number', 'bulk_seed', 'bulk_length'
         ]
 
         if settings.PRODUCT_MODEL:

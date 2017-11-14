@@ -21,6 +21,13 @@ class CouponFormTestCase(TestCase):
         self.user.save()
         self.coupon = Coupon.objects.create_coupon('monetary', 100, self.user)
 
+    def test_inactive_code(self):
+        form_data = {'code': self.coupon.code}
+        self.coupon.active = False
+        self.coupon.save()
+        form = CouponForm(data=form_data)
+        self.assertFalse(form.is_valid())
+
     def test_wrong_code(self):
         form_data = {'code': 'foo'}
         form = CouponForm(data=form_data)
