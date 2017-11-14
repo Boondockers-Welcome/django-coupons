@@ -31,6 +31,6 @@ class CouponAdminTestCase(TestCase):
         ]
 
         if settings.PRODUCT_MODEL:
-            fields.push('valid_products')
+            fields.append('valid_products')
 
         self.assertEquals(list(admin.get_fields(request)), fields)

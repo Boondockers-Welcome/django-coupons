@@ -6,11 +6,16 @@ from django.views.generic.base import TemplateView
 
 from .forms import CouponGenerationForm
 from .models import Coupon, CouponUser, Campaign
+from . import settings
 
 
 class CouponUserInline(admin.TabularInline):
     model = CouponUser
     extra = 0
+    raw_id_fields_list = ['user']
+    if settings.ORDER_MODEL:
+        raw_id_fields_list.append('order')
+    raw_id_fields = tuple(raw_id_fields_list)
 
     def get_max_num(self, request, obj=None, **kwargs):
         if obj:

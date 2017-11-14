@@ -17,6 +17,7 @@ from .settings import (
     SEGMENT_LENGTH,
     SEGMENT_SEPARATOR,
     PRODUCT_MODEL,
+    ORDER_MODEL,
 )
 
 
@@ -178,7 +179,7 @@ class Coupon(models.Model):
             coupon_user = self.users.get(user=user)
         except CouponUser.DoesNotExist:
             try:  # silently fix unbouned or nulled coupon users
-                coupon_user = self.users.get(user__isnull=True)
+                coupon_user = self.users.get(user__isnull=True, redeemed_at=None)
                 coupon_user.user = user
             except CouponUser.DoesNotExist:
                 coupon_user = CouponUser(coupon=self, user=user)
@@ -213,6 +214,9 @@ class CouponUser(models.Model):
     user = models.ForeignKey(user_model, verbose_name=_("User"), null=True, blank=True)
     redeemed_at = models.DateTimeField(_("Redeemed at"), blank=True, null=True)
     code = models.CharField(_("Bulk Code"), max_length=64, blank=True, null=True)
+
+    if ORDER_MODEL:
+        order = models.ForeignKey(ORDER_MODEL, blank=True, null=True)
 
     class Meta:
         unique_together = (('coupon', 'user'),)

@@ -13,8 +13,9 @@ CODE_LENGTH = getattr(settings, 'COUPONS_CODE_LENGTH', 15)
 
 PRODUCT_MODEL = getattr(settings, 'COUPONS_PRODUCT_MODEL', None)
 PRODUCT_NAME_FIELD = getattr(settings, 'COUPONS_PRODUCT_NAME_FIELD', 'name')
+ORDER_MODEL = getattr(settings, 'COUPONS_ORDER_MODEL', None)
 
-CODE_CHARS = getattr(settings, 'COUPONS_CODE_CHARS', string.ascii_letters+string.digits)
+CODE_CHARS = getattr(settings, 'COUPONS_CODE_CHARS', string.ascii_letters + string.digits)
 
 SEGMENTED_CODES = getattr(settings, 'COUPONS_SEGMENTED_CODES', False)
 SEGMENT_LENGTH = getattr(settings, 'COUPONS_SEGMENT_LENGTH', 4)
