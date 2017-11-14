@@ -103,13 +103,14 @@ class CouponManager(models.Manager):
 
 @python_2_unicode_compatible
 class Coupon(models.Model):
-    value = models.IntegerField(_("Value"), help_text=_("Arbitrary coupon value"))
     code = models.CharField(
         _("Code"), max_length=30, unique=True, blank=True,
         help_text=_("Leaving this field empty will generate a random code."))
+    description = models.CharField(max_length=256, blank=True, null=True)
+    value = models.IntegerField(_("Value"), help_text=_("Arbitrary coupon value"))
     type = models.CharField(_("Type"), max_length=20, choices=COUPON_TYPES)
     user_limit = models.PositiveIntegerField(_("User limit"), default=1)
-    created_at = models.DateTimeField(_("Created at"), auto_now_add=True)
+    created_at = models.DateTimeField(_("Created at"), default=timezone.now)
     valid_until = models.DateTimeField(
         _("Valid until"), blank=True, null=True,
         help_text=_("Leave empty for coupons that never expire"))
