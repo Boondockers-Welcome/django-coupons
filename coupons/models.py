@@ -31,7 +31,8 @@ redeem_done = Signal(providing_args=["coupon"])
 class CouponManager(models.Manager):
     def create_coupon(
         self, type, value, users=[], valid_until=None, prefix="",
-        campaign=None, user_limit=None, bulk=False, bulk_number=0, bulk_seed=''
+        campaign=None, user_limit=None, valid_products=None, 
+        bulk=False, bulk_number=0, bulk_seed='',
     ):
         if bulk and bulk_seed == '':
             bulk_seed = md5(hex(int(time() * 10000000))[2:].encode()).hexdigest()
@@ -46,6 +47,10 @@ class CouponManager(models.Manager):
             bulk_number=bulk_number,
             bulk_seed=bulk_seed,
         )
+        if valid_products:
+            coupon.valid_products = valid_products
+            coupon.save()
+
         if user_limit is not None:  # otherwise use default value of model
             coupon.user_limit = user_limit
         try:
@@ -58,6 +63,7 @@ class CouponManager(models.Manager):
         for user in users:
             if user:
                 CouponUser(user=user, coupon=coupon).save()
+
         return coupon
 
     def create_coupons(self, quantity, type, value, valid_until=None, prefix="", campaign=None):
