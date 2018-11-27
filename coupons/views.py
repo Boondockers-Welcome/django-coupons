@@ -75,6 +75,7 @@ def get_coupon_details(request):
         'code': coupon.code,
         'value': coupon.value,
         'type': coupon.type,
+        'gift_certificate': coupon.productlineitem_set.exists(),
     }
     if len(applicable_products):
         data['products'] = applicable_products
