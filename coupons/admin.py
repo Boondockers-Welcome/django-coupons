@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.contrib import messages
 from django.utils.translation import ugettext_lazy as _
 from django.views.generic.base import TemplateView
-
+from django.core import urlresolvers
 from .forms import CouponGenerationForm
 from .models import Coupon, CouponUser, Campaign
 from . import settings
@@ -32,6 +32,22 @@ class CouponAdmin(admin.ModelAdmin):
     search_fields = ('code', 'value')
     inlines = (CouponUserInline,)
     exclude = ('users',)
+    ordering = ['-created_at']
+
+    readonly_fields = ('gift_certificate_order',)
+
+    def gift_certificate_order(self, obj):
+        order = obj.productlineitem_set.first().order
+        link = urlresolvers.reverse(
+            "admin:purchases_order_change",
+            args=[order.id]
+        )
+        return u'<a href="%s">%s by %s on %s</a>' % (
+            link,
+            order.id,
+            order.user.username,
+            order.timestamp.date(),
+        )
 
     def user_count(self, inst):
         return inst.users.count()
@@ -44,6 +60,9 @@ class CouponAdmin(admin.ModelAdmin):
 
         ]
         return my_urls + urls
+
+    gift_certificate_order.short_description = "Gift Certificate Order"
+    gift_certificate_order.allow_tags = True
 
 
 class GenerateCouponsAdminView(TemplateView):
