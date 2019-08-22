@@ -193,6 +193,7 @@ class Coupon(models.Model):
         coupon_user.code = bulk_code
         coupon_user.save()
         redeem_done.send(sender=self.__class__, coupon=self)
+        return coupon_user
 
     def get_bulk_code(self, index):
         hex_id = hex(index)[2:].rjust(len(hex(self.bulk_number)[2:]), '0')
@@ -217,7 +218,7 @@ class Campaign(models.Model):
 @python_2_unicode_compatible
 class CouponUser(models.Model):
     coupon = models.ForeignKey(Coupon, related_name='users')
-    user = models.ForeignKey(user_model, verbose_name=_("User"), null=True, blank=True)
+    user = models.ForeignKey(user_model, verbose_name=_("User"), null=True, blank=True, on_delete=models.SET_NULL)
     redeemed_at = models.DateTimeField(_("Redeemed at"), blank=True, null=True)
     code = models.CharField(_("Bulk Code"), max_length=64, blank=True, null=True)
 
