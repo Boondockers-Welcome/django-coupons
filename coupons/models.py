@@ -31,7 +31,7 @@ redeem_done = Signal(providing_args=["coupon"])
 class CouponManager(models.Manager):
     def create_coupon(
         self, type, value, users=[], valid_until=None, prefix="",
-        campaign=None, user_limit=None, valid_products=None, 
+        campaign=None, user_limit=None, valid_products=None,
         bulk=False, bulk_number=0, bulk_seed='',
     ):
         if bulk and bulk_seed == '':
@@ -48,7 +48,7 @@ class CouponManager(models.Manager):
             bulk_seed=bulk_seed,
         )
         if valid_products:
-            coupon.valid_products = valid_products
+            coupon.valid_products = valid_products.set()
             coupon.save()
 
         if user_limit is not None:  # otherwise use default value of model
@@ -124,7 +124,7 @@ class Coupon(models.Model):
         _("Valid until"), blank=True, null=True,
         help_text=_("Leave empty for coupons that never expire"))
     active = models.BooleanField(default=True)
-    campaign = models.ForeignKey('Campaign', verbose_name=_("Campaign"), blank=True, null=True, related_name='coupons')
+    campaign = models.ForeignKey('Campaign', verbose_name=_("Campaign"), blank=True, null=True, related_name='coupons', on_delete=models.CASCADE)
 
     bulk = models.BooleanField(default=False)
     bulk_number = models.PositiveIntegerField(default=0)
@@ -217,13 +217,13 @@ class Campaign(models.Model):
 
 @python_2_unicode_compatible
 class CouponUser(models.Model):
-    coupon = models.ForeignKey(Coupon, related_name='users')
+    coupon = models.ForeignKey(Coupon, related_name='users', on_delete=models.CASCADE)
     user = models.ForeignKey(user_model, verbose_name=_("User"), null=True, blank=True, on_delete=models.SET_NULL)
     redeemed_at = models.DateTimeField(_("Redeemed at"), blank=True, null=True)
     code = models.CharField(_("Bulk Code"), max_length=64, blank=True, null=True)
 
     if ORDER_MODEL:
-        order = models.ForeignKey(ORDER_MODEL, blank=True, null=True)
+        order = models.ForeignKey(ORDER_MODEL, blank=True, null=True, on_delete=models.CASCADE)
 
     class Meta:
         unique_together = (('coupon', 'user'),)
