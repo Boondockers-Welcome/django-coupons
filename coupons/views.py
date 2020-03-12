@@ -21,7 +21,7 @@ def get_coupon_details(request):
         data = {'err': _("This coupon is not active")}
         return JsonResponse(data)
 
-    if request.user.is_anonymous() and coupon.user_limit > 1:
+    if request.user.is_anonymous and coupon.user_limit > 1:
         data = {'err': _("You must be logged in to use this coupon")}
         return JsonResponse(data)
 
@@ -29,7 +29,7 @@ def get_coupon_details(request):
         data = {'err': _("This coupon has already been redeemed")}
         return JsonResponse(data)
 
-    if request.user.is_anonymous():
+    if request.user.is_anonymous:
         user = None
     else:
         user = request.user
