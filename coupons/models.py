@@ -48,7 +48,7 @@ class CouponManager(models.Manager):
             bulk_seed=bulk_seed,
         )
         if valid_products:
-            coupon.valid_products = valid_products.set()
+            coupon.valid_products.set(valid_products)
             coupon.save()
 
         if user_limit is not None:  # otherwise use default value of model
