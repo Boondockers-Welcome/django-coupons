@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.contrib import messages
 from django.utils.translation import ugettext_lazy as _
 from django.views.generic.base import TemplateView
-from django.core import urlresolvers
+from django import urls
 from .forms import CouponGenerationForm
 from .models import Coupon, CouponUser, Campaign
 from . import settings
@@ -38,7 +38,7 @@ class CouponAdmin(admin.ModelAdmin):
 
     def gift_certificate_order(self, obj):
         order = obj.productlineitem_set.first().order
-        link = urlresolvers.reverse(
+        link = urls.reverse(
             "admin:purchases_order_change",
             args=[order.id]
         )
