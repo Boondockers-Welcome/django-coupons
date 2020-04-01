@@ -1,8 +1,12 @@
+from django.db.models import Count, Q, F
 from django.conf.urls import url
 from django.contrib import admin
 from django.contrib import messages
 from django.utils.translation import ugettext_lazy as _
+from django.utils.safestring import mark_safe
+from django.utils import timezone
 from django.views.generic.base import TemplateView
+from dateutil.relativedelta import relativedelta
 from django import urls
 from .forms import CouponGenerationForm
 from .models import Coupon, CouponUser, Campaign
@@ -23,13 +27,56 @@ class CouponUserInline(admin.TabularInline):
         return None  # disable limit for new objects (e.g. admin add)
 
 
+class CouponAvailableListFilter(admin.SimpleListFilter):
+    # Human-readable title which will be displayed in the
+    # right admin sidebar just above the filter options.
+    title = _('Coupon Availability')
+
+    # Parameter for the filter that will be used in the URL query.
+    parameter_name = 'validity'
+
+    def lookups(self, request, model_admin):
+        """
+        Returns a list of tuples. The first element in each
+        tuple is the coded value for the option that will
+        appear in the URL query. The second element is the
+        human-readable name for the option that will appear
+        in the right sidebar.
+        """
+        return (
+            ('Valid', _('Valid coupons')),
+            ('UsedOrExpired', _('Redeemed or expired coupons')),
+        )
+
+    def queryset(self, request, queryset):
+        """
+        Returns the filtered queryset based on the value
+        provided in the query string and retrievable via
+        `self.value()`.
+        """
+        # Compare the requested value
+        # to decide how to filter the queryset.
+        queryset = queryset.annotate(_coupon_usage=Count('users', filter=Q(users__redeemed_at__isnull=False)))
+        select_filter = Q(
+            Q(valid_until__gte=timezone.now()) | Q(valid_until__isnull=True)
+        ) & Q(
+            Q(user_limit=0) |
+            Q(Q(user_limit__gt=0) & Q(_coupon_usage__lt=F('user_limit')))
+        )
+
+        if self.value() == 'Valid':
+            return queryset.filter(select_filter)
+        if self.value() == 'UsedOrExpired':
+            return queryset.exclude(select_filter)
+
+
 class CouponAdmin(admin.ModelAdmin):
     list_display = [
-        'created_at', 'code', 'type', 'value', 'user_count', 'user_limit', 'is_redeemed', 'valid_until', 'campaign'
+        'code', 'description', 'coupon_value', 'usage', 'last_60_days_usage', 'valid_until', 'created_at',
     ]
-    list_filter = ['type', 'campaign', 'created_at', 'valid_until']
+    list_filter = (CouponAvailableListFilter, 'type', 'created_at', )
     raw_id_fields = ()
-    search_fields = ('code', 'value')
+    search_fields = ('code', 'value', 'description')
     inlines = (CouponUserInline,)
     exclude = ('users',)
     ordering = ['-created_at']
@@ -42,15 +89,29 @@ class CouponAdmin(admin.ModelAdmin):
             "admin:purchases_order_change",
             args=[order.id]
         )
-        return u'<a href="%s">%s by %s on %s</a>' % (
+        return mark_safe('<a href="%s">%s by %s on %s</a>' % (
             link,
             order.id,
             order.user.username,
             order.timestamp.date(),
-        )
+        ))
 
-    def user_count(self, inst):
-        return inst.users.count()
+    def usage(self, inst):
+        if inst.user_limit != 0:
+            return "{} of {}".format(inst._coupon_usage, inst.user_limit)
+        else:
+            return inst._coupon_usage
+
+    def last_60_days_usage(self, inst):
+        return inst._sixty_day_coupon_usage
+
+    def coupon_value(self, inst):
+        if inst.type == 'monetary':
+            return '${}'.format(inst.value)
+        elif inst.type == 'percentage':
+            return '{:2.0f}%'.format(inst.value)
+        else:
+            return '{}'.format(inst.value)
 
     def get_urls(self):
         urls = super(CouponAdmin, self).get_urls()
@@ -61,8 +122,19 @@ class CouponAdmin(admin.ModelAdmin):
         ]
         return my_urls + urls
 
+    def get_queryset(self, request):
+        sixty_days_ago = timezone.now() - relativedelta(days=60)
+        queryset = super().get_queryset(request)
+        queryset = queryset.annotate(
+            _coupon_usage=Count('users'),
+            _sixty_day_coupon_usage=Count('users', filter=Q(users__redeemed_at__gte=sixty_days_ago))
+        )
+        return queryset
+
     gift_certificate_order.short_description = "Gift Certificate Order"
-    gift_certificate_order.allow_tags = True
+    usage.admin_order_field = '_coupon_usage'
+    last_60_days_usage.admin_order_field = '_sixty_day_coupon_usage'
+    last_60_days_usage.short_description = '60 day usage'
 
 
 class GenerateCouponsAdminView(TemplateView):
