@@ -16,6 +16,7 @@ from . import settings
 class CouponUserInline(admin.TabularInline):
     model = CouponUser
     extra = 0
+    verbose_name_plural = 'Coupon\'s usage in last 6 months'
     raw_id_fields_list = ['user']
     if settings.ORDER_MODEL:
         raw_id_fields_list.append('order')
@@ -25,6 +26,32 @@ class CouponUserInline(admin.TabularInline):
         if obj:
             return obj.user_limit
         return None  # disable limit for new objects (e.g. admin add)
+
+    def get_queryset(self, request):
+        six_months_ago = timezone.now() - relativedelta(months=6)
+        qs = super().get_queryset(request).filter(redeemed_at__gte=six_months_ago).order_by('-redeemed_at')
+        return qs
+
+
+class CouponUserAdmin(admin.ModelAdmin):
+    raw_id_fields_array = ['user', 'coupon', 'order']
+    search_fields = ('coupon__code', 'user__username', 'coupon__description')
+    if settings.ORDER_MODEL:
+        raw_id_fields_array.append('order')
+    raw_id_fields = tuple(raw_id_fields_array)
+
+    ordering = ['-redeemed_at']
+
+    def get_list_display(self, request):
+        if settings.ORDER_MODEL:
+            return ('order_id', 'user', 'coupon', 'redeemed_at')
+        else:
+            return ('user', 'coupon', 'redeemed_at')
+
+    def lookup_allowed(self, lookup, value):
+        if lookup == 'coupon__code':
+            return True
+        return super().lookup_allowed(lookup, value)
 
 
 class CouponAvailableListFilter(admin.SimpleListFilter):
@@ -81,7 +108,8 @@ class CouponAdmin(admin.ModelAdmin):
     exclude = ('users',)
     ordering = ['-created_at']
 
-    readonly_fields = ('gift_certificate_order',)
+    readonly_fields = ('gift_certificate_order', 'all_coupon_uses')
+    list_select_related = True
 
     def gift_certificate_order(self, obj):
         order = obj.productlineitem_set.first().order
@@ -94,6 +122,16 @@ class CouponAdmin(admin.ModelAdmin):
             order.id,
             order.user.username,
             order.timestamp.date(),
+        ))
+
+    def all_coupon_uses(self, inst):
+        link = urls.reverse(
+            "admin:coupons_couponuser_changelist",
+        )
+        return mark_safe('<a href="{}?coupon__code={}">See all {} uses of this coupon</a>'.format(
+            link,
+            inst.code,
+            inst._coupon_usage
         ))
 
     def usage(self, inst):
@@ -185,4 +223,5 @@ class CampaignAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Coupon, CouponAdmin)
+admin.site.register(CouponUser, CouponUserAdmin)
 admin.site.register(Campaign, CampaignAdmin)
